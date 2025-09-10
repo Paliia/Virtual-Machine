@@ -574,17 +574,17 @@ void ejecutarSHR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
 
     //Verificar que el valor B sea un desplazamiento valido
     if (valorB < 0 || valorB > 31) {
-        detectaError(COD_ERR_OPE,0x0); // Error en el desplazamiento
+        detectaError(COD_ERR_OPE, 0x0); // Error en el desplazamiento
         return;
     }
 
     //Destino
-    valorA = (int32_t)obtenerValorOperando(tipoA, operandoA,tamA);
+    valorA = (int32_t)obtenerValorOperando(tipoA, operandoA, tamA);
 
     //Desplazar a la derecha el valor A
     resultado = valorA >> valorB;
     //Guardar resultado
-    escribirValorOperando(tipoA, operandoA, resultado,tamA);
+    escribirValorOperando(tipoA, operandoA, resultado, tamA);
 
     //Actualizar el registro de condicion (CC)
     actualizarCC(resultado);
