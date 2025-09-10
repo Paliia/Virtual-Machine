@@ -9,7 +9,7 @@
 //Tamanio de la tabla de descriptores de segmentos
 #define NUM_SEG 8
 
-//Indices de los segmentos (solo para version 1)
+//Indices de los segmentos (solo para version 1 tal vez)
 #define SEG_CS 0
 #define SEG_DS 1
 
@@ -146,7 +146,8 @@ uint32_t calculaDireccionSalto(uint8_t tipoA, uint32_t operandoA,uint8_t tamA);
 void actualizarCC(int32_t resultado);
 
 //-------------FUNCIONES DE OPERANDOS---------------
-uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam);
+void guardaRegistroOP(uint8_t tipo, uint32_t operando, uint8_t tipoOP_AB);
+uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t tipoOP);
 int32_t obtenerValorOperando(uint8_t tipoOp, uint32_t operando, uint8_t tamanio);
 void escribirValorOperando(uint8_t tipoOp, uint32_t operando, int32_t valor,uint8_t tamA);
 

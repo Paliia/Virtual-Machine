@@ -50,9 +50,9 @@ int main(int argc, char *argv[]) {
     // Ejecutar
     int resultado = ejecutarPrograma();
 
-    printf("Registros: \n");
+    printf("\n\nRegistros: \n");
     for (int i = 0; i < NUM_REGISTROS; i++) {
-        printf("%s: %08X  ", NOMBRES_REGISTROS[i], Registros[i]);
+        printf("%s: %08X  \n", NOMBRES_REGISTROS[i], Registros[i]);
     }
     printf("\n");
     printf("Tabla de segmentos: \n");

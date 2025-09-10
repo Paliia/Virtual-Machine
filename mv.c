@@ -120,9 +120,9 @@ int32_t leerMemoria(uint32_t direccionFisica, uint8_t tamanio) {
     return valor;
 }
 
-void escribirMemoria(uint32_t direccionFisica,int32_t valor, uint8_t tamanio) {
+void escribirMemoria(uint32_t direccionFisica, int32_t valor, uint8_t tamanio) {
     if(direccionFisica+tamanio > TAMANIO_MEMORIA) {
-        detectaError(COD_ERR_FIS,direccionFisica+tamanio);
+        detectaError(COD_ERR_FIS, direccionFisica+tamanio);
         return;
     }
      for (int i = 0; i < tamanio; i++) {
@@ -300,7 +300,15 @@ void actualizarCC(int32_t resultado) {
 }
 
 //---------------------FUNCIONES DE OPERANDOS------------------
-uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam) {
+void guardaRegistroOP(uint8_t tipo, uint32_t operando, uint8_t tipoOP_AB){
+    if(tipoOP_AB == 1){
+        Registros[POS_OP1] = (tipo<<24) | operando;
+    }else if(tipoOP_AB == 2){
+        Registros[POS_OP2] = (tipo<<24) | operando;
+    }
+}
+
+uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t tipoOP_AB) {
     uint32_t operando = 0;
     uint8_t byte1, byte2, byte3;
     // Verifica si el operando es valido, y mueve el IP
@@ -315,6 +323,7 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam) {
             return 0;
         }
         operando = byte1;
+        guardaRegistroOP(tipo, operando, tipoOP_AB);
 
     }else if(tipo == OP_INM) { // Operando inmediato (2 bytes)
         byte1 = MemoriaPrincipal[ip_aux];
@@ -325,6 +334,11 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam) {
         if (operando & 0x8000) {
             operando |= 0xFFFF0000;
         }
+
+        //guardar en OP1 u OP2
+        uint32_t operandoOP = byte1 << 8 | byte2;
+        guardaRegistroOP(tipo, operandoOP, tipoOP_AB);
+
     }else if(tipo == OP_MEM) { // Operando de memoria (3 bytes)
         byte1 = MemoriaPrincipal[ip_aux];
         byte2 = MemoriaPrincipal[ip_aux + 1];
@@ -347,10 +361,15 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam) {
         uint32_t direccionLogica = (base << 16) | (offset+offsetReg); // Ensambla la direccion logica
 
         operando = direccionLogica; //Devuelve DIRECCION LOGICA
+
+        //guardar en OP1 u OP2
+        uint32_t operandoOP = byte1 << 16 | byte2 << 8 | byte3;
+        guardaRegistroOP(tipo, operandoOP, tipoOP_AB);
     }else {
         detectaError(COD_ERR_OPE,tipo);
         return 0;
     }
+
     return operando;
 }
 
@@ -365,7 +384,17 @@ int32_t obtenerValorOperando(uint8_t tipoOp, uint32_t operando, uint8_t tamanio)
                 valor = (int32_t)operando;
     } else if (tipoOp == OP_MEM) {
         uint32_t direccionFisica = calculaDireccionFisica(operando);
-        valor = (int32_t) leerMemoria(direccionFisica, tamanio);
+        valor = (int32_t) leerMemoria(direccionFisica, tamanio);    
+
+        //guardo en LAR la direccion logica
+        Registros[POS_LAR] = operando; 
+        // guardo en la parte alta del MAR la cantidad de bytes
+        Registros[POS_MAR] = tamanio << 16;
+        //guardo en la parte baja del MAR la direccion fisica
+        Registros[POS_MAR]= (Registros[POS_MAR] & 0xFFFF0000) | (direccionFisica & 0x0000FFFF);
+        //guardo en MBR el valor leido 
+        Registros[POS_MBR] = valor; 
+
     } else {
         detectaError(COD_ERR_OPE, tipoOp);
         return 0;
@@ -373,7 +402,7 @@ int32_t obtenerValorOperando(uint8_t tipoOp, uint32_t operando, uint8_t tamanio)
     return valor;
 }
 
-void escribirValorOperando(uint8_t tipoOp, uint32_t operando, int32_t valor,uint8_t tamA){
+void escribirValorOperando(uint8_t tipoOp, uint32_t operando, int32_t valor, uint8_t tamA){
 
     if(tipoOp == OP_REG) {
         uint8_t numReg = operando & 0x1F;
@@ -381,6 +410,15 @@ void escribirValorOperando(uint8_t tipoOp, uint32_t operando, int32_t valor,uint
     } else if(tipoOp == OP_MEM) {
         uint32_t direccionFisica = calculaDireccionFisica(operando);
         escribirMemoria(direccionFisica, valor, tamA);
+        
+        //guardo en LAR la direccion logica
+        Registros[POS_LAR] = operando; 
+        // guardo en la parte alta del MAR la cantidad de bytes
+        Registros[POS_MAR] = tamA << 16;
+        //guardo en la parte baja del MAR la direccion fisica
+        Registros[POS_MAR]= (Registros[POS_MAR] & 0xFFFF0000) | (direccionFisica & 0x0000FFFF);
+        //guardo en MBR el valor leido 
+        Registros[POS_MBR] = valor; 
     } else {
         detectaError(COD_ERR_OPE,tipoOp);
     }
@@ -937,23 +975,23 @@ int ejecutarInstruccion(){
     // Decodifico el codigo de operacion y tipo de operandos
 
     Registros[POS_IP]++; // IP apunta a siguiente instruccion
+    Registros[POS_OPC] = codOp;
 
     if((codOp!= OP_STOP) ){ // agregar &&(codOp!=OP_RET) para version 2
         if(cantOperandos == 0x01){
             tipoB = (codigo >> 6) & 0x03;
             tipoA = (codigo >> 4) & 0x03;
-            operandoB = obtenerOperando(tipoB, &Registros[POS_IP], &tamB);
-            operandoA = obtenerOperando(tipoA, &Registros[POS_IP], &tamA);
+            operandoB = obtenerOperando(tipoB, &Registros[POS_IP], &tamB, 2);
+            operandoA = obtenerOperando(tipoA, &Registros[POS_IP], &tamA, 1);
         }else{
             tipoA = (codigo >> 6) & 0x03;
-            operandoA = obtenerOperando(tipoA, &Registros[POS_IP], &tamA);
+            operandoA = obtenerOperando(tipoA, &Registros[POS_IP], &tamA, 1);
+            Registros[POS_OP2] = 0; // No hay operando B
         }
+    }else {
+        Registros[POS_OP1] = 0; // No hay operando A
+        Registros[POS_OP2] = 0; // No hay operando B
     }
-
-    //Almaceno OPC, OP1, OP2, HACER UNA FUNCION PARA ESTO
-    Registros[POS_OPC] = codOp;
-    Registros[POS_OP1] = operandoA;
-    Registros[POS_OP2] = operandoB;
 
     // Ejecuta la instruccion
     switch(codOp){
