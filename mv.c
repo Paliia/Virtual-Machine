@@ -569,6 +569,27 @@ void ejecutarSHL(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
 void ejecutarSHR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t operandoB,uint8_t tamA, uint8_t tamB) {
     int32_t valorA, valorB, resultado;
 
+    valorB = (int32_t)obtenerValorOperando(tipoB, operandoB, tamB);
+    //Verificar que el valor B sea un desplazamiento valido
+    if (valorB < 0 || valorB > 31) {
+        detectaError(COD_ERR_OPE, 0x0); // Error en el desplazamiento
+        return;
+    }
+
+    //Destino
+    valorA = (int32_t)obtenerValorOperando(tipoA, operandoA, tamA);
+    valorA &= 0x7FFFFFFF; // Asegurar que el bit de signo sea 0 para SHR
+    //Desplazar a la derecha el valor A
+    resultado = valorA >> valorB;
+    //Guardar resultado
+    escribirValorOperando(tipoA, operandoA, resultado, tamA);
+
+    //Actualizar el registro de condicion (CC)
+    actualizarCC(resultado);
+}
+
+void ejecutarSAR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t operandoB,uint8_t tamA, uint8_t tamB) {
+    int32_t valorA, valorB, resultado;
     //Fuente
     valorB = (int32_t)obtenerValorOperando(tipoB, operandoB, tamB);
 
@@ -589,8 +610,6 @@ void ejecutarSHR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
     //Actualizar el registro de condicion (CC)
     actualizarCC(resultado);
 }
-
-//void ejecutarSAR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t operandoB,uint8_t tamA, uint8_t tamB) {
 
 void ejecutarAND(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t operandoB,uint8_t tamA, uint8_t tamB) {
     int32_t valorA, valorB, resultado;
