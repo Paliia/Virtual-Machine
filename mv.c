@@ -160,7 +160,6 @@ int cargaProgramaV1(FILE *arch) {
         return -1;
     }
 
-
     // Verificar identificador y versión
     if (memcmp(encabezado.identificador, "VMX25", 5) != 0 || encabezado.version != 1) {
         printf("Encabezado inválido para MV1\n");
@@ -299,9 +298,6 @@ void guardaRegistroOP(uint8_t tipo, uint32_t operando, uint8_t tipoOP_AB){
         Registros[POS_OP1] = (tipo<<24) | operando;
     }else if(tipoOP_AB == 2){
         Registros[POS_OP2] = (tipo<<24) | operando;
-    }else if(tipoOP_AB == 0){
-        Registros[POS_OP1] = 0;
-        Registros[POS_OP2] = 0;
     }
 }
 
@@ -342,11 +338,11 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t t
         byte3 = MemoriaPrincipal[ip_aux + 2];
         (*ip) += 3; ip_aux += 3;
 
-        uint8_t codReg = byte1 & 0x1F; // Extraer posicion del registro que guarda la memoria
+        uint8_t codReg = byte1 & 0x1F; // Extrae posicion del registro que guarda la memoria
         uint16_t offsetReg = (Registros[codReg]) & 0xFFFF; // Extraer el offset del registro
         uint16_t offset = (byte2 << 8) | byte3; // Ensambla el offset de 16 bits
         // Calcular direccion logica
-        uint32_t base = Registros[codReg] >>16; // Extraer el segmento
+        uint32_t base = Registros[codReg] >>16; // Extrae el segmento
         uint32_t direccionLogica = (base << 16) | (offset+offsetReg); // Ensambla la direccion logica
 
         operando = direccionLogica; //Devuelve DIRECCION LOGICA
