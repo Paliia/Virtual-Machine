@@ -49,15 +49,5 @@ int main(int argc, char *argv[]) {
     }
     // Ejecutar
     int resultado = ejecutarPrograma();
-
-    printf("\n\nRegistros: \n");
-    for (int i = 0; i < NUM_REGISTROS; i++) {
-        printf("%s: %08X  \n", NOMBRES_REGISTROS[i], Registros[i]);
-    }
-    printf("\n");
-    printf("Tabla de segmentos: \n");
-    for (int i = 0; i < NUM_SEG; i++) {
-        printf("Segmento %d - Base: %04X, Tamanio: %04X\n", i, tablaSegmentos[i].base, tablaSegmentos[i].tamanio);
-    }
     return resultado;
 }

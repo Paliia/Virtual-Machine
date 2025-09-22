@@ -70,10 +70,10 @@
 #define OP_STOP 0x0F
 
 //Tipo de operandos
-#define OP_NING 0x00
-#define OP_REG 0x01
-#define OP_INM 0x02
-#define OP_MEM 0x03
+#define OP_NING 0b00
+#define OP_REG 0b01
+#define OP_INM 0b10
+#define OP_MEM 0b11
 
 //Llamadas al sistema
 #define SYS_READ 0x01

@@ -111,12 +111,6 @@ int32_t leerMemoria(uint32_t direccionFisica, uint8_t tamanio) {
     for(int i = 0; i < tamanio; i++) {
         valor = (valor << 8) | MemoriaPrincipal[direccionFisica + i];
     }
-
-    // Extensión de signo para tamaños menores a 4 bytes (parte 2)
-    //if(tamanio < 4) {
-    //    int bits = tamanio * 8;
-    //    valor = (valor << (32 - bits)) >> (32 - bits);
-    //}
     return valor;
 }
 
@@ -136,8 +130,8 @@ void inicializaSegmentosV1(uint16_t tamanioCodigo){
         tablaSegmentos[i].base = 0;
         tablaSegmentos[i].tamanio = 0;
     }
-        //actualiza la tabla de descriptores
-        //En esta version, SEG_CS = 0 y SEG_DS = 1 (posiciones del CS y DS)
+    //actualiza la tabla de descriptores
+    //En esta version, SEG_CS = 0 y SEG_DS = 1 (posiciones del CS y DS)
     tablaSegmentos[SEG_CS].tamanio = tamanioCodigo;
 
     tablaSegmentos[SEG_DS].base = tamanioCodigo;
@@ -305,6 +299,9 @@ void guardaRegistroOP(uint8_t tipo, uint32_t operando, uint8_t tipoOP_AB){
         Registros[POS_OP1] = (tipo<<24) | operando;
     }else if(tipoOP_AB == 2){
         Registros[POS_OP2] = (tipo<<24) | operando;
+    }else if(tipoOP_AB == 0){
+        Registros[POS_OP1] = 0;
+        Registros[POS_OP2] = 0;
     }
 }
 
@@ -323,7 +320,7 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t t
             return 0;
         }
         operando = byte1;
-        guardaRegistroOP(tipo, operando, tipoOP_AB);
+        guardaRegistroOP(OP_REG, operando, tipoOP_AB);
 
     }else if(tipo == OP_INM) { // Operando inmediato (2 bytes)
         byte1 = MemoriaPrincipal[ip_aux];
@@ -337,21 +334,13 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t t
 
         //guardar en OP1 u OP2
         uint32_t operandoOP = byte1 << 8 | byte2;
-        guardaRegistroOP(tipo, operandoOP, tipoOP_AB);
+        guardaRegistroOP(OP_INM, operandoOP, tipoOP_AB);
 
     }else if(tipo == OP_MEM) { // Operando de memoria (3 bytes)
         byte1 = MemoriaPrincipal[ip_aux];
         byte2 = MemoriaPrincipal[ip_aux + 1];
         byte3 = MemoriaPrincipal[ip_aux + 2];
         (*ip) += 3; ip_aux += 3;
-
-        //Determinar tamanio de acceso: (para version 2)
-        //uint8_t mod=byte3 & 0x03;
-        //switch(mod){
-        //    case MOD_LONG: *tam=4; break;
-        //    case MOD_WORD: *tam=2; break;
-        //    case MOD_BYTE: *tam=1; break;
-        //}
 
         uint8_t codReg = byte1 & 0x1F; // Extraer posicion del registro que guarda la memoria
         uint16_t offsetReg = (Registros[codReg]) & 0xFFFF; // Extraer el offset del registro
@@ -364,7 +353,7 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t t
 
         //guardar en OP1 u OP2
         uint32_t operandoOP = byte1 << 16 | byte2 << 8 | byte3;
-        guardaRegistroOP(tipo, operandoOP, tipoOP_AB);
+        guardaRegistroOP(OP_MEM, operandoOP, tipoOP_AB);
     }else {
         detectaError(COD_ERR_OPE,tipo);
         return 0;
@@ -581,7 +570,7 @@ void ejecutarSHR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
     valorA &= 0x7FFFFFFF; // Asegurar que el bit de signo sea 0 para SHR
     //Desplazar a la derecha el valor A
     resultado = valorA >> valorB;
-    //Guardar resultado
+
     escribirValorOperando(tipoA, operandoA, resultado, tamA);
 
     //Actualizar el registro de condicion (CC)
@@ -888,22 +877,22 @@ void readSYS() {
 
             switch (EAX) {
                 case 0x10: { // BINARIO
-                        if (scanf("%s", binario) == 1) {
-                            valor = 0;
-                            int j = 0;
-                            while (binario[j] == '0' || binario[j] == '1') {
-                                valor = (valor << 1) | (binario[j] - '0');
-                                j++;
-                            }
-                            intentoValido=1;
+                    if (scanf("%s", binario) == 1) {
+                        valor = 0;
+                        int j = 0;
+                        while (binario[j] == '0' || binario[j] == '1') {
+                            valor = (valor << 1) | (binario[j] - '0');
+                            j++;
                         }
+                        intentoValido=1;
+                    }
                     break;
                 }
                 case 0x01: { // DECIMAL
-                        if (scanf("%d", &valor) == 1) {
-                            valor = (uint32_t)valor;
-                            intentoValido=1;
-                        }
+                    if (scanf("%d", &valor) == 1) {
+                        valor = (uint32_t)valor;
+                        intentoValido=1;
+                    }
                     break;
                 }
                 case 0x02: { // CARÁCTER
@@ -926,7 +915,7 @@ void readSYS() {
             while (getchar() != '\n'); // limpiar buffer de entrada
 
             if (!intentoValido && intento < 2) {
-                    printf("Entrada inválida. Reintente.\n");
+                printf("Entrada inválida. Reintente.\n");
             }
             intento++;
         }
@@ -1007,9 +996,9 @@ int ejecutarInstruccion(){
             operandoA = obtenerOperando(tipoA, &Registros[POS_IP], &tamA, 1);
             Registros[POS_OP2] = 0; // No hay operando B
         }
-    }else {
-        Registros[POS_OP1] = 0; // No hay operando A
-        Registros[POS_OP2] = 0; // No hay operando B
+    }else { //ningun operando, quedan en 0 OP1 y OP2
+        Registros[POS_OP1] = 0; 
+        Registros[POS_OP2] = 0; 
     }
 
     // Ejecuta la instruccion
@@ -1042,7 +1031,7 @@ int ejecutarInstruccion(){
             ejecutarSHR(tipoA, operandoA, tipoB, operandoB, tamA, tamB);
             break;
         case OP_SAR: 
-            //ejecutarSAR(tipoA, operandoA, tipoB, operandoB, tamA, tamB);  
+            ejecutarSAR(tipoA, operandoA, tipoB, operandoB, tamA, tamB);  
             break;
         case OP_AND:
             ejecutarAND(tipoA, operandoA, tipoB, operandoB, tamA, tamB);
@@ -1153,15 +1142,6 @@ switch (operandoSize) {
         }
         codReg = MemoriaPrincipal[punt]& 0x1F;
 
-        //if(versionPrograma==2){ (para version 2)
-        //    uint8_t modMem = MemoriaPrincipal[punt+2] & 0x03;
-        //    switch(modMem){ 
-        //        case MOD_BYTE: printf("b"); break;
-        //        case MOD_WORD: printf("w"); break;
-        //        case MOD_LONG: printf("l"); break;
-        //    }
-        //}
-
         printf("[");
         if (codReg < NUM_REGISTROS && NOMBRES_REGISTROS[codReg][0] != '\0') {
             printf("%s", NOMBRES_REGISTROS[codReg]);
@@ -1190,9 +1170,6 @@ void disassemblerInstruccion(uint32_t *ip) {
     if(versionPrograma==1) {// Imprimir direccion
         printf("[%04X] ", *ip);
     }
-    //} else if(versionPrograma==2){
-    //    printf("[%04X] ", *ip - tablaSegmentos[Registros[POS_CS] >> 16].base);
-    //}
 
     //Bytes de la instruccion
     bytesLen += sprintf(bytesStr + bytesLen, "%02X", codigo);
