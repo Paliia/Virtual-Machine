@@ -833,9 +833,9 @@ void ejecutarSUB(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
 void ejecutarMUL(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t operandoB,uint8_t tamA, uint8_t tamB) {
     int32_t resultado, valorA, valorB;
     //Fuente
-    valorB = obtenerValorOperando(tipoB, operandoB, tamB);
+    valorB = (int32_t)obtenerValorOperando(tipoB, operandoB, tamB);
     //Destino
-    valorA = obtenerValorOperando(tipoA, operandoA, tamA);
+    valorA = (int32_t)obtenerValorOperando(tipoA, operandoA, tamA);
 
     // Verificar overflow
     if ((valorB > 0 && valorA > INT32_MAX / valorB) || (valorB < 0 && valorA < INT32_MIN / valorB)) {
@@ -854,13 +854,13 @@ void ejecutarDIV(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
     int32_t resultado, resto, valorA, valorB;
 
     //Fuente
-    valorB = obtenerValorOperando(tipoB, operandoB, tamB);
+    valorB = (int32_t)obtenerValorOperando(tipoB, operandoB,tamB);
     //Destino
-    valorA = obtenerValorOperando(tipoA, operandoA, tamA);
+    valorA = (int32_t)obtenerValorOperando(tipoA, operandoA,tamA);
 
     // Verificar division por cero
     if (valorB == 0) {
-        detectaError(COD_ERR_DIV, 0x00); // Error en la division
+        detectaError(COD_ERR_DIV,0x00); // Error en la division
         return;
     }
     // Dividir los valores
@@ -868,7 +868,7 @@ void ejecutarDIV(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
     resto = valorA % valorB; // Obtener el resto de la division
 
     //Guardar resultado
-    escribirValorOperando(tipoA, operandoA, resultado, tamA);
+    escribirValorOperando(tipoA, operandoA, resultado,tamA);
 
     // Actualizar el registro de condicion (CC)
     actualizarCC(resultado);
@@ -918,7 +918,8 @@ void ejecutarSHL(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
 }
 
 void ejecutarSHR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t operandoB,uint8_t tamA, uint8_t tamB) {
-    int32_t valorA, valorB, resultado;
+    int32_t valorA_signo, valorB, resultado_signo;
+    uint32_t valorA_sin, resultado_sin;
 
     valorB = (int32_t)obtenerValorOperando(tipoB, operandoB, tamB);
     //Verificar que el valor B sea un desplazamiento valido
@@ -928,15 +929,17 @@ void ejecutarSHR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t oper
     }
 
     //Destino
-    valorA = (int32_t)obtenerValorOperando(tipoA, operandoA, tamA);
-    valorA &= 0x7FFFFFFF; // Asegurar que el bit de signo sea 0 para SHR
+    valorA_signo = (int32_t)obtenerValorOperando(tipoA, operandoA, tamA);
+    valorA_sin = (uint32_t) valorA_signo; // Asegurar que el bit de signo sea 0 para SHR
     //Desplazar a la derecha el valor A
-    resultado = valorA >> valorB;
+    resultado_sin = valorA_sin >> valorB;
 
-    escribirValorOperando(tipoA, operandoA, resultado, tamA);
+    resultado_signo = (int32_t) resultado_sin;
+
+    escribirValorOperando(tipoA, operandoA, resultado_signo, tamA);
 
     //Actualizar el registro de condicion (CC)
-    actualizarCC(resultado);
+    actualizarCC(resultado_signo);
 }
 
 void ejecutarSAR(uint8_t tipoA, uint32_t operandoA, uint8_t tipoB, uint32_t operandoB,uint8_t tamA, uint8_t tamB) {
