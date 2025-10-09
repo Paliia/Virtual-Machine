@@ -215,7 +215,6 @@ void inicializaTablasV2(VMXHeaderV2 encabezado, char **parametros, int cantParam
         }
         else
             return;
-
     }
 
     // 2. CONST SEGMENT (si existe)
@@ -388,8 +387,7 @@ int cargaProgramaV2(FILE *arch, char **parametros, int cantParam) {
     }
 
     // Inicializar segmentos y registros
-    inicializaTablasV2(encabezado, parametros,cantParam);
-
+    inicializaTablasV2(encabezado, parametros, cantParam);
 
     // Cargar segmentos en memoria
     uint8_t posCS = Registros[POS_CS] >> 16;
@@ -697,7 +695,7 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t t
         (*ip) += 3; ip_aux += 3;
 
         //Determinar tamanio de acceso:
-        uint8_t mod=byte3 & 0x03;
+        uint8_t mod= (byte1>>6) & 0x03;
         switch(mod){
             case MOD_LONG: *tam=4; break;
             case MOD_WORD: *tam=2; break;
@@ -717,7 +715,7 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t t
         uint32_t operandoOP = byte1 << 16 | byte2 << 8 | byte3;
         guardaRegistroOP(OP_MEM, operandoOP, tipoOP_AB);
     }else {
-        detectaError(COD_ERR_OPE,tipo);
+        detectaError(COD_ERR_OPE, tipo);
         return 0;
     }
 
@@ -733,7 +731,7 @@ int32_t obtenerValorOperando(uint8_t tipoOp, uint32_t operando, uint8_t tamanio)
         valor =(int32_t) obtenerValorRegistro(numReg, sector);
 
     } else if (tipoOp == OP_INM) {
-                valor = (int32_t)operando;
+        valor = (int32_t)operando;
     } else if (tipoOp == OP_MEM) {
         uint32_t direccionFisica = calculaDireccionFisica(operando);
         valor = (int32_t) leerMemoria(direccionFisica, tamanio);    
@@ -1738,7 +1736,7 @@ switch (operandoSize) {
         codReg = MemoriaPrincipal[punt]& 0x1F;
 
         if(versionPrograma==2){
-            uint8_t modMem = MemoriaPrincipal[punt+2] & 0x03;
+            uint8_t modMem = (MemoriaPrincipal[punt] >>6) & 0x03;
             switch(modMem){
                 case MOD_BYTE: printf("b"); break;
                 case MOD_WORD: printf("w"); break;

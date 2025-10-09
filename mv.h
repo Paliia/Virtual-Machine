@@ -9,7 +9,7 @@
 //Tamanio de la tabla de descriptores de segmentos
 #define NUM_SEG 8
 
-//Indices de los segmentos (solo para version 1 tal vez)
+//Indices de los segmentos (solo para version 1)
 #define SEG_CS 0
 #define SEG_DS 1
 
@@ -192,7 +192,7 @@ int guardarImagenVMI(const char *filename);
 //-------------FUNCIONES DE REGISTROS---------------
 int verificaRegistro(uint8_t numReg, uint8_t sector);
 int32_t obtenerValorRegistro(uint8_t numReg, uint8_t sector);
-void escribirEnRegistro(uint8_t numReg, int8_t sector, uint32_t valor);
+void escribirEnRegistro(uint8_t numReg, uint8_t sector, int32_t valor);
 uint32_t calculaDireccionSalto(uint8_t tipoA, uint32_t operandoA,uint8_t tamA);
 void actualizarCC(int32_t resultado);
 
