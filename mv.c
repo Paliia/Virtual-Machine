@@ -127,7 +127,7 @@ void escribirMemoria(uint32_t direccionFisica, int32_t valor, uint8_t tamanio) {
         detectaError(COD_ERR_FIS, direccionFisica+tamanio);
         return;
     }
-     for (int i = 0; i < tamanio; i++) {
+    for (int i = 0; i < tamanio; i++) {
         MemoriaPrincipal[direccionFisica + i] = (valor >> (8 * (tamanio - 1 - i))) & 0xFF;
     }
 
@@ -222,18 +222,18 @@ void inicializaTablasV2(VMXHeaderV2 encabezado, char **parametros, int cantParam
         tablaSegmentos[contSeg].base = pos_act;
         tablaSegmentos[contSeg].tamanio = encabezado.tamanio_const;
         pos_act += encabezado.tamanio_const;
-        Registros[POS_KS]= (contSeg<<16);
+        Registros[POS_KS] = (contSeg<<16);
         contSeg++;
     }
     else{
-        Registros[POS_KS]=0xFFFFFFFF;
+        Registros[POS_KS] = 0xFFFFFFFF;
     }
 
     // 3. CODE SEGMENT (siempre existe)
     tablaSegmentos[contSeg].base = pos_act;
     tablaSegmentos[contSeg].tamanio = encabezado.tamanio_cod;
     pos_act += encabezado.tamanio_cod;
-    Registros[POS_CS]=(contSeg<<16);
+    Registros[POS_CS] = (contSeg<<16);
     contSeg++;
 
     // 4. DATA SEGMENT (si existe)
@@ -241,11 +241,11 @@ void inicializaTablasV2(VMXHeaderV2 encabezado, char **parametros, int cantParam
         tablaSegmentos[contSeg].base = pos_act;
         tablaSegmentos[contSeg].tamanio = encabezado.tamanio_datos;
         pos_act += encabezado.tamanio_datos;
-        Registros[POS_DS]=(contSeg<<16);
+        Registros[POS_DS] = (contSeg<<16);
         contSeg++;
     }
     else{
-        Registros[POS_DS]=0xFFFFFFFF;
+        Registros[POS_DS] = 0xFFFFFFFF;
     }
 
     // 5. EXTRA SEGMENT (si existe)
@@ -257,7 +257,7 @@ void inicializaTablasV2(VMXHeaderV2 encabezado, char **parametros, int cantParam
         contSeg++;
     }
     else{
-        Registros[POS_ES]=0xFFFFFFFF;
+        Registros[POS_ES] = 0xFFFFFFFF;
     }
 
     // 6. STACK SEGMENT (si existe)
@@ -480,7 +480,7 @@ int cargarImagenVMI(const char *filename){
     }
     encabezado.tamanio_mem = convertirBigEndian16(encabezado.tamanio_mem);
     TAMANIO_MEMORIA = encabezado.tamanio_mem*1024; // Convertir a bytes
-    printf("Header: %s, Version: %d, Tamanio Memoria: %d KiB\n",encabezado.identificador, encabezado.version, encabezado.tamanio_mem);
+    printf("Header: %s, Version: %d, Tamanio Memoria: %d KiB\n", encabezado.identificador, encabezado.version, encabezado.tamanio_mem);
 
     if(fread(Registros, sizeof(uint32_t), NUM_REGISTROS, vmi_file) !=NUM_REGISTROS){
         fclose(vmi_file);
@@ -488,7 +488,7 @@ int cargarImagenVMI(const char *filename){
         return -1;
     }
 
-    if(fread(tablaSegmentos,sizeof(DescriptoresSegmentos), NUM_SEG,vmi_file) !=NUM_SEG){
+    if(fread(tablaSegmentos, sizeof(DescriptoresSegmentos), NUM_SEG, vmi_file) !=NUM_SEG){
         fclose(vmi_file);
         printf("Error: No se pudieron leer la tabla de segmentos \n");
         return -1;
@@ -504,8 +504,8 @@ int cargarImagenVMI(const char *filename){
             tablaSegmentos[i].tamanio = 0;
             tablaSegmentos[i].base = 0;
         }else{
-           tablaSegmentos[i].tamanio = convertirBigEndian16(tablaSegmentos[i].tamanio);
-           tablaSegmentos[i].base    = convertirBigEndian16(tablaSegmentos[i].base);
+            tablaSegmentos[i].tamanio = convertirBigEndian16(tablaSegmentos[i].tamanio);
+            tablaSegmentos[i].base    = convertirBigEndian16(tablaSegmentos[i].base);
         }
     }
 
@@ -1513,9 +1513,9 @@ uint16_t convertirBigEndian16(uint16_t val) {
 
 uint32_t convertirBigEndian32(uint32_t val) {
     return ((val >> 24) & 0xFF) |
-           ((val >> 8) & 0xFF00) |
-           ((val << 8) & 0xFF0000) |
-           ((val << 24) & 0xFF000000);
+        ((val >> 8) & 0xFF00) |
+        ((val << 8) & 0xFF0000) |
+        ((val << 24) & 0xFF000000);
 }
 
 //-------------------FUNCIONES DE EJECUCION-------------------------
@@ -1724,7 +1724,7 @@ switch (operandoSize) {
                 valor |= 0xFFFF0000;
         }
         if(codOp==OP_JMP || codOp==OP_JN || codOp==OP_JNN || codOp==OP_JNP || codOp==OP_JNZ || codOp==OP_JP || codOp==OP_JZ){
-             printf("%04X", valor);
+            printf("%04X", valor);
         }else{
             printf("%-4d", (int32_t)valor);
         }

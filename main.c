@@ -5,7 +5,7 @@
 #include "mv.h"
 
 uint8_t versionPrograma = 0;
-int continuarEjecucion = 1;//para controlar el bucle
+int continuarEjecucion = 1; //para controlar el bucle
 char *archivo_vmi=NULL;
 extern uint32_t TAMANIO_MEMORIA;
 extern uint32_t entryPoint;
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "Error: Tamanio de memoria invalido. Debe ser entre 1 y 1024 KiB.\n");
                 return 1;
             }
-            TAMANIO_MEMORIA = TAMANIO_MEMORIA_KiB * 1024; // Convertir a bytes
+            TAMANIO_MEMORIA = TAMANIO_MEMORIA_KiB * 1024; // Conversión a bytes
         }else if(strcmp(argv[i], "-d") == 0){
             desensamblar = 1;
         }else if(strcmp(argv[i], "-p") == 0){
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
                 parametros[cantParam] = argv[j];
                 cantParam++;
             }
-            break; // Salir del bucle una vez que se procesan los parámetros
+            break; // Salida del bucle una vez que se procesan los parámetros
         }
     }
 

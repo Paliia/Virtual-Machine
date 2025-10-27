@@ -123,9 +123,9 @@ typedef struct{
 } DescriptoresSegmentos;
 
 typedef struct{ //HEADER VERSION 1
-  char identificador[5]; // "VMX25"
-  uint8_t version;    // 1
-  uint16_t tamanio;
+    char identificador[5]; // "VMX25"
+    uint8_t version;    // 1
+    tamanio;
 } VMXHeaderV1;
 
 typedef struct{ //HEADER VERSION 2
