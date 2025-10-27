@@ -9,7 +9,7 @@
 //Tamanio de la tabla de descriptores de segmentos
 #define NUM_SEG 8
 
-//Indices de los segmentos (solo para version 1 tal vez)
+//Indices de los segmentos (solo para version 1)
 #define SEG_CS 0
 #define SEG_DS 1
 
@@ -23,7 +23,7 @@
 #define POS_OP2 6
 #define POS_SP 7
 #define POS_BP 8
-//reservados del 7 al 9
+//reservado el registro 9
 #define POS_EAX 10
 #define POS_EBX 11
 #define POS_ECX 12
@@ -39,7 +39,6 @@
 #define POS_SS 29
 #define POS_KS 30
 #define POS_PS 31
-//reservados del 28 al 31
 
 // Bits del registro CC
 #define CC_N 0x80000000  // Bit de signo (Negative)
@@ -72,7 +71,11 @@
 #define OP_JNP 0x06
 #define OP_JNN 0x07
 #define OP_NOT 0x08
+#define OP_PUSH 0x0B
+#define OP_POP 0x0C
+#define OP_CALL 0x0D
 
+#define OP_RET 0x0E
 #define OP_STOP 0x0F
 
 //Tipo de operandos
@@ -81,9 +84,18 @@
 #define OP_INM 0b10
 #define OP_MEM 0b11
 
+//Tipo de modificadores de memoria
+#define MOD_BYTE 0x03
+#define MOD_WORD 0x02
+#define MOD_LONG 0x00
+
 //Llamadas al sistema
 #define SYS_READ 0x01
 #define SYS_WRITE 0x02
+#define SYS_STR_READ 0x03
+#define SYS_STR_WRITE 0x04
+#define SYS_CLEAR 0x07
+#define SYS_BREAKPOINT 0x0F
 
 //Codigos de ERROR
 #define COD_ERR_INS 0
@@ -96,7 +108,10 @@
 #define COD_ERR_OVF 7
 #define COD_ERR_LOG 8
 #define COD_ERR_MEM_INS 9
+#define COD_ERR_STACK_OVF 10
+#define COD_ERR_STACK_UDF 11
 #define COD_ERR_SEGMENT 12
+#define COD_ERR_STACK 13
 
 //maxima cant de bits para SYS read
 #define MAX 32
@@ -108,19 +123,38 @@ typedef struct{
 } DescriptoresSegmentos;
 
 typedef struct{ //HEADER VERSION 1
-  char identificador[5]; // "VMX25"
-  uint8_t version;    // 1
-  uint16_t tamanio;
+    char identificador[5]; // "VMX25"
+    uint8_t version;    // 1
+    tamanio;
 } VMXHeaderV1;
+
+typedef struct{ //HEADER VERSION 2
+    char identificador[5]; //"VMX25"
+    uint8_t version; // 2
+    uint16_t tamanio_cod;
+    uint16_t tamanio_datos;
+    uint16_t tamanio_extra;
+    uint16_t tamanio_stack;
+    uint16_t tamanio_const;
+    uint16_t entry_point;
+} VMXHeaderV2;
+
+typedef struct{ //Header para archivos .vmi
+    char identificador[5]; //"VMIX25"
+    uint8_t version;    //1
+    uint16_t tamanio_mem;   //Tamanio en KiB
+} VMIHeader;
 
 //-------------DECLARO VARIABLES GLOBALES QUE ESTAN EN OTRO ARCHIVO---------------
 //-------------EXTERN---------------
 // Memoria principal
 extern uint8_t *MemoriaPrincipal;
 extern uint32_t TAMANIO_MEMORIA;
+extern uint32_t entryPoint; // Entry point del programa
 // Tabla de Registros
 extern uint32_t Registros[NUM_REGISTROS];
 extern DescriptoresSegmentos tablaSegmentos[NUM_SEG];
+extern char *archivo_vmi;
 
 //-------------FUNCION PARA DETECCION DE ERROR---------------
 void detectaError(int8_t cod, int32_t er);
@@ -137,17 +171,28 @@ void escribirMemoria(uint32_t direccionFisica, int32_t valor, uint8_t tamanio);
 void inicializaSegmentosV1(uint16_t tamanioCodigo);
 void inicializaTablaRegistrosV1();
 
+//-------------INICIALIZACIONES PARA VERSION 2---------------
+void inicializaTablasV2(VMXHeaderV2 encabezado, char **parametros, int cantParam);
+
+
 //-------------LECTURA DEL ARCHIVO---------------
 //-------------CARGA PROGRAMA PARA VERSION 1---------------
 int cargaProgramaV1(FILE *arch);
 
+//-------------CARGA PROGRAMA PARA VERSION 2---------------
+int cargaProgramaV2(FILE *arch, char **parametros, int cantParam);
+
 //-------------CARGA PROGRAMA SEGUN LA VERSION---------------
-int cargaPrograma(const char *nombreArchivo);
+int cargaPrograma(const char *nombreArchivo, char **parametros, int cantParam);
+
+//-------------CARGA O CREA ARCHIVO VMI---------------
+int cargarImagenVMI(const char *filename);
+int guardarImagenVMI(const char *filename);
 
 //-------------FUNCIONES DE REGISTROS---------------
-int verificaRegistro(uint8_t numReg);
-int32_t obtenerValorRegistro(uint8_t numReg);
-void escribirEnRegistro(uint8_t numReg, int32_t valor);
+int verificaRegistro(uint8_t numReg, uint8_t sector);
+int32_t obtenerValorRegistro(uint8_t numReg, uint8_t sector);
+void escribirEnRegistro(uint8_t numReg, uint8_t sector, int32_t valor);
 uint32_t calculaDireccionSalto(uint8_t tipoA, uint32_t operandoA,uint8_t tamA);
 void actualizarCC(int32_t resultado);
 
@@ -182,15 +227,25 @@ void ejecutarJNZ(uint8_t tipoA, uint32_t operandoA,uint8_t tamA);
 void ejecutarJNP(uint8_t tipoA, uint32_t operandoA,uint8_t tamA);
 void ejecutarJNN(uint8_t tipoA, uint32_t operandoA,uint8_t tamA);
 void ejecutarNOT(uint8_t tipoA, uint32_t operandoA,uint8_t tamA);
+void ejecutarPUSH(int32_t valorPush);
+int32_t ejecutarPOP(int *error);
+void ejecutarCALL(uint32_t destino);
+void ejecutarRET();
+
+//-------------INICIALIZO LA PILA PARA LA SUBRUTINA---------------
+void inicializarPilaMain(int cantParam, uint32_t dirParam);
 
 //-------------LLAMADA A SYS---------------
 void writeSYS();
 void readSYS();
+void writeSTR();
+void readSTR();
 
 uint16_t convertirBigEndian16(uint16_t val);
 uint32_t convertirBigEndian32(uint32_t val);
 int ejecutarInstruccion();
 void mostrarMenu(char *op);
+void breakPoint();
 void ejecutarSYS(uint32_t operandoA);
 
 //-------------FUNCIONES DE EJECUCION---------------
@@ -201,7 +256,8 @@ int ejecutarPrograma ();
 static const char* MNEMONICOS[] = {
     [OP_SYS] = "SYS",    [OP_JMP] = "JMP",    [OP_JZ] = "JZ",     [OP_JP] = "JP",
     [OP_JN] = "JN",      [OP_JNZ] = "JNZ",    [OP_JNP] = "JNP",   [OP_JNN] = "JNN",
-    [OP_NOT] = "NOT",    [OP_STOP] = "STOP",  [OP_MOV] = "MOV",   [OP_ADD] = "ADD",
+    [OP_NOT] = "NOT",    [OP_PUSH] = "PUSH",  [OP_POP] = "POP",   [OP_CALL] = "CALL",
+    [OP_RET]= "RET",     [OP_STOP] = "STOP",  [OP_MOV] = "MOV",   [OP_ADD] = "ADD",
     [OP_SUB] = "SUB",    [OP_MUL] = "MUL",    [OP_DIV] = "DIV",   [OP_CMP] = "CMP",    
     [OP_SHL] = "SHL",    [OP_SHR] = "SHR",    [OP_SAR] = "SAR",   [OP_AND] = "AND",
     [OP_OR] = "OR",      [OP_XOR] = "XOR",    [OP_SWAP] = "SWAP", [OP_LDL] = "LDL",   
@@ -209,9 +265,9 @@ static const char* MNEMONICOS[] = {
 };
 
 //-------------Nombres de los registros---------------
-static const char* NOMBRES_REGISTROS[] = { "LAR", "MAR", "MBR", "IP", "OPC", "OP1", "OP2", "-", "-", "-", 
+static const char* NOMBRES_REGISTROS[] = { "LAR", "MAR", "MBR", "IP", "OPC", "OP1", "OP2", "SP", "BP", "-", 
     "EAX", "EBX", "ECX", "EDX", "EEX", "EFX", "AC", "CC", "-", "-", "-", "-", "-", "-", "-", "-",
-    "CS", "DS", "-", "-", "-", "-"
+    "CS", "DS", "ES", "SS", "KS", "PS"
 };
 
 // Funcion auxiliar para determinar tamanio del operando
@@ -221,7 +277,11 @@ void decodificarOperando(uint32_t punt, int operandoSize,uint8_t codOp);
 
 void disassemblerInstruccion(uint32_t *ip);
 
+void disassembleKS();
+
 void disassembleProgramaMV1();
+void disassembleProgramaMV2();
+void disassemblerPasoAPaso();
 
 void muestraDesensamblador(uint8_t version);
 
