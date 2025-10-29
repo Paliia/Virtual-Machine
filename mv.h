@@ -85,9 +85,9 @@
 #define OP_MEM 0b11
 
 //Tipo de modificadores de memoria
-#define MOD_BYTE 0x03
-#define MOD_WORD 0x02
-#define MOD_LONG 0x00
+#define MOD_BYTE 0b11
+#define MOD_WORD 0b10
+#define MOD_LONG 0b00
 
 //Llamadas al sistema
 #define SYS_READ 0x01
@@ -125,7 +125,7 @@ typedef struct{
 typedef struct{ //HEADER VERSION 1
     char identificador[5]; // "VMX25"
     uint8_t version;    // 1
-    tamanio;
+    uint16_t tamanio;
 } VMXHeaderV1;
 
 typedef struct{ //HEADER VERSION 2
@@ -170,6 +170,11 @@ void escribirMemoria(uint32_t direccionFisica, int32_t valor, uint8_t tamanio);
 //-------------INICIALIZACIONES PARA VERSION 1---------------
 void inicializaSegmentosV1(uint16_t tamanioCodigo);
 void inicializaTablaRegistrosV1();
+
+//-------------FUNCIONES PARA PARAM SEGMENT---------------
+uint32_t calculaTamanioParametros(char **parametros, int cantParam);
+uint32_t inicializaParamSegment(char **parametros, int cantParam);
+
 
 //-------------INICIALIZACIONES PARA VERSION 2---------------
 void inicializaTablasV2(VMXHeaderV2 encabezado, char **parametros, int cantParam);
@@ -285,4 +290,4 @@ void disassemblerPasoAPaso();
 
 void muestraDesensamblador(uint8_t version);
 
-#endif // MV_H_INCLUDED
+#endif // MV_H_INCLUDED;

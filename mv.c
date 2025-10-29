@@ -32,7 +32,7 @@ void detectaError(int8_t cod, int32_t er){
             break;
         }
         case COD_ERR_REG:{
-            printf("Error, registro invalido \n");
+            printf("Error, registro invalido, Registro: %d \n", er);
             break;
         }
         case COD_ERR_FIS: {
@@ -133,6 +133,7 @@ void escribirMemoria(uint32_t direccionFisica, int32_t valor, uint8_t tamanio) {
 
 }
 
+//----------------INICIALIZACIONES PARA VERSION 1---------------------
 void inicializaSegmentosV1(uint16_t tamanioCodigo){
     for(int i=0; i<NUM_SEG; i++){
         tablaSegmentos[i].base = 0;
@@ -211,6 +212,7 @@ void inicializaTablasV2(VMXHeaderV2 encabezado, char **parametros, int cantParam
             tablaSegmentos[contSeg].tamanio = tamanio_param;
             dir_argv_mv = inicializaParamSegment(parametros, cantParam);
             pos_act += tamanio_param;
+            Registros[POS_PS] = (contSeg<<16);
             contSeg++;
         }
         else
@@ -260,21 +262,15 @@ void inicializaTablasV2(VMXHeaderV2 encabezado, char **parametros, int cantParam
         Registros[POS_ES] = 0xFFFFFFFF;
     }
 
-    // 6. STACK SEGMENT (si existe)
-    if (encabezado.tamanio_stack > 0) {
-        tablaSegmentos[contSeg].base = pos_act;
-        tablaSegmentos[contSeg].tamanio = encabezado.tamanio_stack;
-        Registros[POS_SS] = (contSeg << 16);
-        //El SP debe apuntar al "tope" de la pila, que es el final del segmento de stack.
-        //Pero la pila crece hacia abajo. Entonces, el SP inicial es la base + el tamaño.
-        Registros[POS_SP] = (contSeg<<16) | encabezado.tamanio_stack;
-        Registros[POS_BP] = Registros[POS_SP];
-        contSeg++;
-    }
-    else{
-        Registros[POS_SS] = 0xFFFFFFFF;
-        Registros[POS_SP] = 0;
-    }
+    // 6. STACK SEGMENT (siempre existe)
+    tablaSegmentos[contSeg].base = pos_act;
+    tablaSegmentos[contSeg].tamanio = encabezado.tamanio_stack;
+    Registros[POS_SS] = (contSeg << 16);
+    //El SP debe apuntar al "tope" de la pila, que es el final del segmento de stack.
+    //Pero la pila crece hacia abajo. Entonces, el SP inicial es la base + el tamaño.
+    Registros[POS_SP] = (contSeg<<16) | encabezado.tamanio_stack;
+    Registros[POS_BP] = Registros[POS_SP];
+    contSeg++;
 
     // Inicializar segmentos no usados
     for (; contSeg < NUM_SEG; contSeg++) {
@@ -601,7 +597,7 @@ void escribirEnRegistro(uint8_t numReg, uint8_t sector, int32_t valor) {
             Registros[numReg] = (Registros[numReg] & 0xFFFF0000) | (valor & 0xFFFF);
             break; // Escribir en la parte alta del registro
         default:
-            detectaError(COD_ERR_REG,numReg);
+            detectaError(COD_ERR_REG, numReg);
             return;
     }
 }
@@ -667,12 +663,15 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t t
     if(tipo == OP_REG) { // Operando de registro (1 byte)
         byte1 = MemoriaPrincipal[ip_aux];
         (*ip)++; ip_aux++;
-        if(verificaRegistro(byte1 & 0x1F == -1, (byte1 >> 6) & 0x03) == -1) {
-            detectaError(COD_ERR_REG, byte1 & 0x1F);
+        uint8_t numReg = byte1 & 0x1F;
+        uint8_t sector = (byte1 >> 6) & 0x03;
+        if(verificaRegistro(numReg, sector) == 0) {
+            operando = byte1;
+            guardaRegistroOP(OP_REG, operando, tipoOP_AB);
+        }else{
             return 0;
         }
-        operando = byte1;
-        guardaRegistroOP(OP_REG, operando, tipoOP_AB);
+        
 
     }else if(tipo == OP_INM) { // Operando inmediato (2 bytes)
         byte1 = MemoriaPrincipal[ip_aux];
@@ -704,7 +703,8 @@ uint32_t obtenerOperando(uint8_t tipo, unsigned int *ip, uint8_t *tam, uint8_t t
 
         uint8_t codReg = byte1 & 0x1F; // Extrae posicion del registro que guarda la memoria
         uint16_t offsetReg = (Registros[codReg]) & 0xFFFF; // Extraer el offset del registro
-        uint16_t offset = (byte2 << 8) | byte3; // Ensambla el offset de 16 bits
+        uint16_t offset = (uint16_t)(byte2 << 8) | byte3; // Ensambla el offset de 16 bits
+        
         // Calcular direccion logica
         uint32_t base = Registros[codReg] >>16; // Extrae el segmento
         uint32_t direccionLogica = (base << 16) | (offset+offsetReg); // Ensambla la direccion logica
@@ -1557,6 +1557,7 @@ int ejecutarInstruccion(){
             tipoA = (codigo >> 6) & 0x03;
             operandoA = obtenerOperando(tipoA, &Registros[POS_IP], &tamA, 1);
             Registros[POS_OP2] = 0; // No hay operando B
+        
         }
     }else { //ningun operando, quedan en 0 OP1 y OP2
         Registros[POS_OP1] = 0; 
@@ -1895,7 +1896,7 @@ void disassembleProgramaMV2() {
     disassembleKS();
 
     // Desensamblar código (Code Segment)
-    printf("\nCode Segment\n");
+    printf("\n Code Segment\n");
     uint32_t ip = baseCode;
 
     while (ip < baseCode + tamCode) {
